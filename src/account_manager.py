@@ -110,7 +110,7 @@ class HomeView(ft.View):
                                                     ),
                                                     ft.ElevatedButton(
                                                         'Change Password',
-                                                        width=130,
+                                                        width=175,
                                                         scale=1.2,
                                                         height=45,
                                                         style=ft.ButtonStyle(
@@ -121,9 +121,10 @@ class HomeView(ft.View):
                                                 ],
                                                 alignment=ft.MainAxisAlignment.END,
                                                 width=600,
-                                                spacing=25
+                                                spacing=30
                                             )
-                                        ]
+                                        ],
+                                        spacing=12
                                     )
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -132,17 +133,17 @@ class HomeView(ft.View):
                         ],
                         expand=True,
                         width=800,
-                        height=280
+                        height=285
                     ),
                     ft.Card(
                         ft.Column(
                             [
                                 self.table
                             ],
-                        height=150,
-                        scroll=ft.ScrollMode.ALWAYS
+                            height=145,
+                            scroll=ft.ScrollMode.ALWAYS
                         ),
-                        height=150
+                        height=145
                     )
                 ]
             )
@@ -282,6 +283,8 @@ class FormOne(ft.Row):
             password=can_reveal_password,
             on_change=self.changes
         )
+        self.field_eye = ft.IconButton(ft.icons.REMOVE_RED_EYE, icon_color='black',
+                                       on_click=lambda e: toggle_password(e, self.field, self.field_eye))
 
         self.button = ft.ElevatedButton(
             button_text if button_text else 'BUTTON',
@@ -297,7 +300,16 @@ class FormOne(ft.Row):
 
         self.controls = [
                 self.label,
-                self.field,
+                (self.field if not can_reveal_password else ft.Stack(
+                    [
+                        self.field,
+                        ft.Container(
+                            self.field_eye,
+                            right=2,
+                            top=4,
+                        )
+                    ]
+                )),
                 self.button
         ]
 
@@ -314,8 +326,20 @@ class VerifyDialog(ft.AlertDialog):
             value=title
         )
 
-        self.content = ft.TextField(
-            label=label
+        self.TextField = ft.TextField(
+            label=label,
+            password=True,
+        )
+        self.eye_button = ft.IconButton(ft.icons.REMOVE_RED_EYE, on_click=lambda e: toggle_password(e, self.TextField, self.eye_button))
+        self.content = ft.Stack(
+            [
+                self.TextField,
+                ft.Container(
+                    self.eye_button,
+                    right=2,
+                    top=4,
+                )
+            ]
         )
 
         self.actions = [
@@ -324,7 +348,7 @@ class VerifyDialog(ft.AlertDialog):
                 style=ft.ButtonStyle(
                     text_style=ft.TextStyle(size=16)
                 ),
-                width=75,
+                width=100,
                 on_click=self.on_close
             ),
             ft.ElevatedButton(
@@ -332,7 +356,7 @@ class VerifyDialog(ft.AlertDialog):
                 style=ft.ButtonStyle(
                     text_style=ft.TextStyle(size=16)
                 ),
-                width=75,
+                width=100,
                 on_click=self.on_verify
             )
         ]
@@ -346,7 +370,7 @@ class VerifyDialog(ft.AlertDialog):
 
     def on_verify(self, event: ft.ControlEvent):
         if self.verify:
-            self.verify(self.content)
+            self.verify(self.TextField)
         self.page.close(self)
 
 class UpdateAccountDialog(ft.AlertDialog):
@@ -362,8 +386,11 @@ class UpdateAccountDialog(ft.AlertDialog):
             label = 'New Username (Optional)'
         )
         self.new_password = ft.TextField(
-            label = 'New Password (Optional)'
+            label = 'New Password (Optional)',
+            password = True
         )
+        self.new_password_eye = ft.IconButton(ft.icons.REMOVE_RED_EYE,
+                                              on_click=lambda e: toggle_password(e, self.new_password, self.new_password_eye))
 
         self.title = ft.Text(
             value=f'Updating Account: {app_name.title()}'
@@ -372,7 +399,16 @@ class UpdateAccountDialog(ft.AlertDialog):
         self.content = ft.Column(
             [
                 self.new_username,
-                self.new_password
+                ft.Stack(
+                    [
+                        self.new_password,
+                        ft.Container(
+                            self.new_password_eye,
+                            right=2,
+                            top=4,
+                        )
+                    ]
+                )
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             height=100
@@ -380,11 +416,19 @@ class UpdateAccountDialog(ft.AlertDialog):
 
         self.actions = [
             ft.ElevatedButton(
+                text='Discard',
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=16)
+                ),
+                width=120,
+                on_click=lambda e: self.page.close(self)
+            ),
+            ft.ElevatedButton(
                 text='Save Changes',
                 style=ft.ButtonStyle(
                     text_style=ft.TextStyle(size=16)
                 ),
-                width=125,
+                width=150,
                 on_click=self.on_save
             )
         ]
@@ -426,14 +470,23 @@ class ChangAccountPassDialog(ft.AlertDialog):
         self.change = on_change
 
         self.old_password = ft.TextField(
-            label = 'Enter Current Password'
+            label = 'Enter Current Password',
+            password = True
         )
+        self.old_password_eye = ft.IconButton(ft.icons.REMOVE_RED_EYE,
+                                              on_click=lambda e: toggle_password(e, self.old_password, self.old_password_eye))
         self.new_password = ft.TextField(
-            label = 'Enter New Password'
+            label = 'Enter New Password',
+            password = True
         )
+        self.new_password_eye = ft.IconButton(ft.icons.REMOVE_RED_EYE,
+                                              on_click=lambda e: toggle_password(e, self.new_password, self.new_password_eye))
         self.confirmation_password = ft.TextField(
-            label = 'Confirm New Password'
+            label = 'Confirm New Password',
+            password = True
         )
+        self.confirmation_password_eye = ft.IconButton(ft.icons.REMOVE_RED_EYE,
+                                              on_click=lambda e: toggle_password(e, self.confirmation_password, self.confirmation_password_eye))
 
         self.title = ft.Text(
             value='Change Passwor'
@@ -441,9 +494,36 @@ class ChangAccountPassDialog(ft.AlertDialog):
 
         self.content = ft.Column(
             [
-                self.old_password,
-                self.new_password,
-                self.confirmation_password
+                ft.Stack(
+                    [
+                        self.old_password,
+                        ft.Container(
+                            self.old_password_eye,
+                            right=2,
+                            top=4,
+                        )
+                    ]
+                ),
+                ft.Stack(
+                    [
+                        self.new_password,
+                        ft.Container(
+                            self.new_password_eye,
+                            right=2,
+                            top=4,
+                        )
+                    ]
+                ),
+                ft.Stack(
+                    [
+                        self.confirmation_password,
+                        ft.Container(
+                            self.confirmation_password_eye,
+                            right=2,
+                            top=4,
+                        )
+                    ]
+                )
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             height=150
@@ -451,11 +531,19 @@ class ChangAccountPassDialog(ft.AlertDialog):
 
         self.actions = [
             ft.ElevatedButton(
+                text='Cancel',
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=16)
+                ),
+                width=100,
+                on_click=lambda e: self.page.close(self)
+            ),
+            ft.ElevatedButton(
                 text='Change Password',
                 style=ft.ButtonStyle(
                     text_style=ft.TextStyle(size=16)
                 ),
-                width=125,
+                width=175,
                 on_click=self.on_change
             )
         ]
@@ -507,6 +595,15 @@ class ChangAccountPassDialog(ft.AlertDialog):
         if self.change:
             self.change()
         self.page.close(self)
+
+def toggle_password(event: ft.ControlEvent, text_field: ft.TextField, eye_button: ft.IconButton):
+    text_field.password = not bool(text_field.password)
+    if text_field.password:
+        eye_button.icon = ft.icons.REMOVE_RED_EYE
+    else:
+        eye_button.icon = ft.icons.REMOVE_RED_EYE_OUTLINED
+    text_field.update()
+    eye_button.update()
 
 def insert_account(user_db, AppName, username, password):
     conn = sqlite3.connect(f"src/assets/database/{user_db}.db")
