@@ -59,7 +59,7 @@ class HomeView(ft.View):
 
         self.app_name = FormOne('App Name:', button_text='Add', on_click=self.add_account)
         self.username = FormOne('Username:', button_text='Review Pass', on_click=self.view_account_password)
-        self.password = FormOne('Password:', button_text='Update', on_click=self.update_account)
+        self.password = FormOne('Password:', button_text='Update', on_click=self.update_account, can_reveal_password=True)
         self.search = FormOne('Search:', button_text='Delete', on_click=self.delete_account,
                               on_change=self.load_accounts)
 
@@ -256,7 +256,8 @@ class TableRow(ft.DataRow):
         super().__init__(self.cells, on_select_changed=on_select)
 
 class FormOne(ft.Row):
-    def __init__(self, label: str, button_text: str | None = None, on_click: Any | None = None, on_change: Any | None = None):
+    def __init__(self, label: str, button_text: str | None = None, on_click: Any | None = None, on_change: Any | None = None,
+                 can_reveal_password: bool = False):
         super().__init__()
 
         self.spacing = 20
@@ -278,6 +279,7 @@ class FormOne(ft.Row):
             text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
             border_width=0,
             height=48,
+            password=can_reveal_password,
             on_change=self.changes
         )
 
