@@ -3,7 +3,7 @@ import main as m
 import sqlite3
 from typing import Any
 
-def main(page: ft.Page, username: str):
+def main(page: ft.Page, username: str, password: str):
     page.title = f"{username} InstaVault"
     page.window.icon = 'src/assets/Logo.png'
     page.window.width = 800
@@ -13,7 +13,7 @@ def main(page: ft.Page, username: str):
 
     def route_change(route):
         page.views.clear()
-        page.views.append(HomeView(page, username))
+        page.views.append(HomeView(page, username, password))
 
         match page.route:
             case '/option?': # if you want to create a new route inside the manager
@@ -36,11 +36,12 @@ def main(page: ft.Page, username: str):
     page.go('/home')
 
 class HomeView(ft.View):
-    def __init__(self, page: ft.Page, username: str):
+    def __init__(self, page: ft.Page, username: str, password: str):
         super().__init__()
         self.page = page
-        self.current_selected = None
+        self.current_selected: TableRow | None = None
         self.admin = username
+        self.admin_pass = password
         self.route = '/home'
         print(self.route)
 
@@ -57,9 +58,10 @@ class HomeView(ft.View):
         )
 
         self.app_name = FormOne('App Name:', button_text='Add', on_click=self.add_account)
-        self.username = FormOne('Username:', button_text='Review Pass')
-        self.password = FormOne('Password:', button_text='Update')
-        self.search = FormOne('Search:', button_text='Delete', on_click=self.delete_account)
+        self.username = FormOne('Username:', button_text='Review Pass', on_click=self.view_account_password)
+        self.password = FormOne('Password:', button_text='Update', on_click=self.update_account)
+        self.search = FormOne('Search:', button_text='Delete', on_click=self.delete_account,
+                              on_change=self.load_accounts)
 
         self.table = ft.DataTable(
             [
@@ -90,6 +92,7 @@ class HomeView(ft.View):
                                                         'Clear',
                                                         width=100,
                                                         scale=1.2,
+                                                        height=45,
                                                         style=ft.ButtonStyle(
                                                             shape=ft.RoundedRectangleBorder(radius=5)
                                                         ),
@@ -99,6 +102,7 @@ class HomeView(ft.View):
                                                         'Log Out',
                                                         width=100,
                                                         scale=1.2,
+                                                        height=45,
                                                         style=ft.ButtonStyle(
                                                             shape=ft.RoundedRectangleBorder(radius=5)
                                                         ),
@@ -107,10 +111,12 @@ class HomeView(ft.View):
                                                     ft.ElevatedButton(
                                                         'Change Password',
                                                         width=130,
-                                                        scale=1.15,
+                                                        scale=1.2,
+                                                        height=45,
                                                         style=ft.ButtonStyle(
                                                             shape=ft.RoundedRectangleBorder(radius=5)
-                                                        )
+                                                        ),
+                                                        on_click=self.change_account_password
                                                     )
                                                 ],
                                                 alignment=ft.MainAxisAlignment.END,
@@ -157,56 +163,73 @@ class HomeView(ft.View):
         password = self.password.field.value
         if appname and username and password:
             insert_account(f'{self.admin} Accounts', appname, username, password)
-            m.ErrorDialog(self.page, "Success", "Account added successfully!")
+            self.page.snack_bar = ft.SnackBar(ft.Text('Account added successfully!', color='green'))
+            self.page.snack_bar.open = True
+            self.page.update()
             self.clear_field(event)
             self.load_accounts()
         else:
             m.ErrorDialog(self.page, 'Error', 'App Name, Username, Password are required')
     
-    def print_parent(self):
-        print('printing... from parent')
+    def view_account_password(self, event: ft.ControlEvent):
+        if not self.current_selected:
+            return # return if there are no selected row
+
+        def verify_check(textfield):
+            if self.admin_pass == textfield.value:
+                m.ErrorDialog(self.page, 'Success',f'Password: {self.current_selected.password.value}')
+                self.load_accounts()
+            else:
+                m.ErrorDialog(self.page, 'Error', 'Invalid Password')
+
+        VerifyDialog(self.page, 'Verify Password', 'Enter Password to Delete', on_verify=verify_check)
+
+    def update_account(self, event: ft.ControlEvent):
+        if not self.current_selected:
+            return # return if there are no selected row
+
+        def verify_check(textfield):
+            if self.admin_pass == textfield.value:
+                UpdateAccountDialog(self.page, self.admin, self.current_selected.app_name.value, on_save=self.load_accounts)
+            else:
+                m.ErrorDialog(self.page, 'Error', 'Invalid Password')
+
+        VerifyDialog(self.page, 'Verify Password', 'Enter Password to Delete', on_verify=verify_check)
 
     def delete_account(self, event: ft.ControlEvent):
         if not self.current_selected:
             return # return if there are no selected row
-        
-        VerifyDialog(self.page, 'Verify Password', 'Enter Password to Delete')
 
-        # try:
-        #     SelectItem = AccountsTreeView.selection()[0]  # Get the selected item
-        #     AppName = AccountsTreeView.item(SelectItem, "values")[0]
+        appname = self.current_selected.app_name.value
+        username = self.current_selected.username.value
+        password = self.current_selected.password.value
 
-        #     # Password verification popup
-        #     def verify_and_delete():
-        #         EnteredPassword = PasswordEntry.get()
-        #         if validate_user(username, EnteredPassword):
-        #             PassVerificationWindow.destroy()  # Close the verification window
-        #             delete_account_from_db(user_db, AppName)  # Delete the account from the database
-        #             messagebox.showinfo("Success", f"Account '{AppName}' deleted successfully!")
-        #             load_accounts()  # Refresh the Treeview
-        #         else:
-        #             messagebox.showerror("Error", "Invalid Password.")
+        def verify_check(textfield):
+            if self.admin_pass == textfield.value:
+                delete_account_from_db(self.admin, appname, username, password)
+                self.page.snack_bar = ft.SnackBar(ft.Text('deleted successfully!', color='green'))
+                self.page.snack_bar.open = True
+                self.page.update()
+                self.load_accounts()
+            else:
+                m.ErrorDialog(self.page, 'Error', 'Invalid Password')
 
-        #     # Create password verification window
-        #     PassVerificationWindow = tk.Toplevel(root)
-        #     PassVerificationWindow.title("Verify Password")
-        #     PassVerificationWindow.configure(bg="black")
-        #     PassVerificationWindow.geometry("300x150")
+        VerifyDialog(self.page, 'Verify Password', 'Enter Password to Delete', on_verify=verify_check)
 
-        #     tk.Label(PassVerificationWindow, text="Enter Password To Delete:", font=("Arial", 12, "bold"), fg="white",
-        #              bg="black").pack(pady=10)
-        #     PasswordEntry = tk.Entry(PassVerificationWindow, show="•")
-        #     PasswordEntry.pack(pady=5)
-        #     tk.Button(PassVerificationWindow, text="Verify and Delete", width=20, pady=3, bg="Black", fg="White",
-        #               border=1, font=("Arial", 10), command=verify_and_delete).pack(pady=10)
+    def change_account_password(self, event: ft.ControlEvent):
+        if not self.current_selected:
+            return # return if there are no selected row
 
-        # except IndexError:
-        #     messagebox.showerror("Error", "No account selected.")
+        ChangAccountPassDialog(self.page, self.admin, self.load_accounts)
 
-    def load_accounts(self):
+    def load_accounts(self, search_query: ft.ControlEvent | None = None):
         self.table.rows = []
 
-        for row in get_data(f'{self.admin} Accounts'):
+        accounts = get_data(f'{self.admin} Accounts')
+        if search_query:
+            accounts = [account for account in accounts if search_query.control.value.lower() in account[0].lower()]
+
+        for row in accounts:
             self.table.rows.append(TableRow(row[0], row[1], row[2], self.on_row_select))
         self.page.update()
 
@@ -216,7 +239,7 @@ class HomeView(ft.View):
             row.selected = False
 
         self.current_selected.selected = True
-        self.update() 
+        self.update()
 
 class TableRow(ft.DataRow):
     def __init__(self, appname: str, username: str, password: str, on_select: Any):
@@ -233,12 +256,14 @@ class TableRow(ft.DataRow):
         super().__init__(self.cells, on_select_changed=on_select)
 
 class FormOne(ft.Row):
-    def __init__(self, label: str, button_text: str | None = None, on_click: Any | None = None):
+    def __init__(self, label: str, button_text: str | None = None, on_click: Any | None = None, on_change: Any | None = None):
         super().__init__()
 
         self.spacing = 20
         self.alignment = ft.MainAxisAlignment.END
         self.width = 600
+        self.run_spacing = 10
+        self.changes = on_change
 
         self.label = ft.Text(
             label,
@@ -251,7 +276,9 @@ class FormOne(ft.Row):
             color='black',
             width=250,
             text_style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-            border_width=0
+            border_width=0,
+            height=48,
+            on_change=self.changes
         )
 
         self.button = ft.ElevatedButton(
@@ -262,6 +289,7 @@ class FormOne(ft.Row):
                 shape=ft.RoundedRectangleBorder(radius=5),
                 alignment=ft.alignment.center
             ),
+            height=48,
             on_click=on_click
         )
 
@@ -315,9 +343,168 @@ class VerifyDialog(ft.AlertDialog):
             self.close()
 
     def on_verify(self, event: ft.ControlEvent):
-        self.page.close(self)
         if self.verify:
-            self.verify()
+            self.verify(self.content)
+        self.page.close(self)
+
+class UpdateAccountDialog(ft.AlertDialog):
+    def __init__(self, page: ft.Page, user_db: str, app_name: str | None = None, on_save: Any | None = None):
+        super().__init__()
+        self.page = page
+        self.modal = True
+        self.user_db = user_db
+        self.app_name = app_name
+        self.save = on_save
+
+        self.new_username = ft.TextField(
+            label = 'New Username (Optional)'
+        )
+        self.new_password = ft.TextField(
+            label = 'New Password (Optional)'
+        )
+
+        self.title = ft.Text(
+            value=f'Updating Account: {app_name.title()}'
+        )
+
+        self.content = ft.Column(
+            [
+                self.new_username,
+                self.new_password
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            height=100
+        )
+
+        self.actions = [
+            ft.ElevatedButton(
+                text='Save Changes',
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=16)
+                ),
+                width=125,
+                on_click=self.on_save
+            )
+        ]
+
+        self.page.open(self)
+
+    def on_save(self, event: ft.ControlEvent):
+        conn = sqlite3.connect(f"src/assets/database/{self.user_db} Accounts.db")
+        cursor = conn.cursor()
+
+        if self.new_username.value:
+            cursor.execute(
+                "UPDATE accounts SET Username = ? WHERE App = ?",
+                (self.new_username.value, self.app_name)
+            )
+
+        if self.new_password.value:
+            cursor.execute(
+                "UPDATE accounts SET Password = ? WHERE App = ?",
+                (self.new_password.value, self.app_name)
+            )
+
+        conn.commit()
+        conn.close()
+
+        self.page.snack_bar = ft.SnackBar(ft.Text('Account successfully changed!', color='green'))
+        self.page.snack_bar.open = True
+        self.page.update()
+        if self.save:
+            self.save()
+        self.page.close(self)
+
+class ChangAccountPassDialog(ft.AlertDialog):
+    def __init__(self, page: ft.Page, user_db: str, on_change: Any | None = None):
+        super().__init__()
+        self.page = page
+        self.modal = True
+        self.user_db = user_db
+        self.change = on_change
+
+        self.old_password = ft.TextField(
+            label = 'Enter Current Password'
+        )
+        self.new_password = ft.TextField(
+            label = 'Enter New Password'
+        )
+        self.confirmation_password = ft.TextField(
+            label = 'Confirm New Password'
+        )
+
+        self.title = ft.Text(
+            value='Change Passwor'
+        )
+
+        self.content = ft.Column(
+            [
+                self.old_password,
+                self.new_password,
+                self.confirmation_password
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            height=150
+        )
+
+        self.actions = [
+            ft.ElevatedButton(
+                text='Change Password',
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=16)
+                ),
+                width=125,
+                on_click=self.on_change
+            )
+        ]
+
+        self.page.open(self)
+
+    def reset_textfield(self):
+        self.old_password.value = ''
+        self.new_password.value = ''
+        self.confirmation_password.value = ''
+
+    def on_change(self, event: ft.ControlEvent):
+        conn = sqlite3.connect(f"src/assets/database/{self.user_db} Accounts.db")
+        cursor = conn.cursor()
+
+        # help in this part
+        cursor.execute("SELECT password FROM accounts WHERE password = ?", (self.old_password.value,))
+        stored_password = cursor.fetchone()
+
+        if not stored_password:
+            # Old password doesn't match any record
+            self.page.snack_bar = ft.SnackBar(ft.Text('Invalid Old Password'))
+            self.page.snack_bar.open = True
+            self.reset_textfield()
+            self.page.update()
+            conn.close()
+            return
+
+        if self.new_password.value != self.confirmation_password.value:
+            # New passwords do not match
+            self.page.snack_bar = ft.SnackBar(ft.Text('New password and confirmation password do not match.'))
+            self.page.snack_bar.open = True
+            self.reset_textfield()
+            self.page.update()
+            conn.close()
+            return
+
+        cursor.execute(
+            "UPDATE accounts SET password = ? WHERE password = ?",
+            (self.new_password.value, self.old_password.value)
+        )
+
+        conn.commit()
+        conn.close()
+
+        self.page.snack_bar = ft.SnackBar(ft.Text('Password successfully changed!', color='green'))
+        self.page.snack_bar.open = True
+        self.page.update()
+        if self.change:
+            self.change()
+        self.page.close(self)
 
 def insert_account(user_db, AppName, username, password):
     conn = sqlite3.connect(f"src/assets/database/{user_db}.db")
@@ -326,6 +513,13 @@ def insert_account(user_db, AppName, username, password):
         INSERT INTO accounts (App, Username, Password)
         VALUES (?, ?, ?)
     """, (AppName, username, password))
+    conn.commit()
+    conn.close()
+
+def delete_account_from_db(user_db, AppName, username, password):
+    conn = sqlite3.connect(f"src/assets/database/{user_db} Accounts.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM accounts WHERE App = ? AND Username = ? AND Password = ?", (AppName, username, password))
     conn.commit()
     conn.close()
 

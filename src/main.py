@@ -109,7 +109,7 @@ class LoginView(ft.View):
 
         if user_authentication(username, password):
             ErrorDialog(self.page, 'Success', f'Welcome back! {username}',
-                        on_close=lambda: account_manager.main(self.page, username))
+                        on_close=lambda: account_manager.main(self.page, username, password))
         else:
             ErrorDialog(self.page, 'Error', 'Wrong Username or Password')
 
