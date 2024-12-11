@@ -39,6 +39,7 @@ class HomeView(ft.View):
     def __init__(self, page: ft.Page, username: str):
         super().__init__()
         self.page = page
+        self.current_selected = None
         self.admin = username
         self.route = '/home'
         print(self.route)
@@ -58,7 +59,7 @@ class HomeView(ft.View):
         self.app_name = FormOne('App Name:', button_text='Add', on_click=self.add_account)
         self.username = FormOne('Username:', button_text='Review Pass')
         self.password = FormOne('Password:', button_text='Update')
-        self.search = FormOne('Search:', button_text='Delete')
+        self.search = FormOne('Search:', button_text='Delete', on_click=self.delete_account)
 
         self.table = ft.DataTable(
             [
@@ -66,7 +67,7 @@ class HomeView(ft.View):
                 ft.DataColumn(ft.Text('Username')),
                 ft.DataColumn(ft.Text('Password')),
             ],
-            width=800
+            width=800,
         )
 
         self.controls = [
@@ -161,26 +162,75 @@ class HomeView(ft.View):
             self.load_accounts()
         else:
             m.ErrorDialog(self.page, 'Error', 'App Name, Username, Password are required')
+    
+    def print_parent(self):
+        print('printing... from parent')
+
+    def delete_account(self, event: ft.ControlEvent):
+        if not self.current_selected:
+            return # return if there are no selected row
+        
+        VerifyDialog(self.page, 'Verify Password', 'Enter Password to Delete')
+
+        # try:
+        #     SelectItem = AccountsTreeView.selection()[0]  # Get the selected item
+        #     AppName = AccountsTreeView.item(SelectItem, "values")[0]
+
+        #     # Password verification popup
+        #     def verify_and_delete():
+        #         EnteredPassword = PasswordEntry.get()
+        #         if validate_user(username, EnteredPassword):
+        #             PassVerificationWindow.destroy()  # Close the verification window
+        #             delete_account_from_db(user_db, AppName)  # Delete the account from the database
+        #             messagebox.showinfo("Success", f"Account '{AppName}' deleted successfully!")
+        #             load_accounts()  # Refresh the Treeview
+        #         else:
+        #             messagebox.showerror("Error", "Invalid Password.")
+
+        #     # Create password verification window
+        #     PassVerificationWindow = tk.Toplevel(root)
+        #     PassVerificationWindow.title("Verify Password")
+        #     PassVerificationWindow.configure(bg="black")
+        #     PassVerificationWindow.geometry("300x150")
+
+        #     tk.Label(PassVerificationWindow, text="Enter Password To Delete:", font=("Arial", 12, "bold"), fg="white",
+        #              bg="black").pack(pady=10)
+        #     PasswordEntry = tk.Entry(PassVerificationWindow, show="•")
+        #     PasswordEntry.pack(pady=5)
+        #     tk.Button(PassVerificationWindow, text="Verify and Delete", width=20, pady=3, bg="Black", fg="White",
+        #               border=1, font=("Arial", 10), command=verify_and_delete).pack(pady=10)
+
+        # except IndexError:
+        #     messagebox.showerror("Error", "No account selected.")
 
     def load_accounts(self):
         self.table.rows = []
 
         for row in get_data(f'{self.admin} Accounts'):
-            self.table.rows.append(TableRow(row[0], row[1], row[2]))
+            self.table.rows.append(TableRow(row[0], row[1], row[2], self.on_row_select))
         self.page.update()
 
+    def on_row_select(self, event: ft.OptionalEventCallable):
+        self.current_selected = event.control
+        for row in self.table.rows:
+            row.selected = False
+
+        self.current_selected.selected = True
+        self.update() 
 
 class TableRow(ft.DataRow):
-    def __init__(self, appname: str, username: str, password: str):
-    
+    def __init__(self, appname: str, username: str, password: str, on_select: Any):
+        self.app_name = ft.Text(appname)
+        self.username = ft.Text(username)
+        self.password = ft.TextField(password, read_only=True, border_width=0, selection_color=ft.colors.TRANSPARENT, password=True)
+
         self.cells = [
-            ft.DataCell(ft.Text(appname)),
-            ft.DataCell(ft.Text(username)),
-            ft.DataCell(ft.Text(password)),
+            ft.DataCell(self.app_name),
+            ft.DataCell(self.username),
+            ft.DataCell(self.password),
         ]
 
-        super().__init__(self.cells)
-
+        super().__init__(self.cells, on_select_changed=on_select)
 
 class FormOne(ft.Row):
     def __init__(self, label: str, button_text: str | None = None, on_click: Any | None = None):
@@ -206,10 +256,11 @@ class FormOne(ft.Row):
 
         self.button = ft.ElevatedButton(
             button_text if button_text else 'BUTTON',
-            width=100,
+            width=125,
             scale=1.2,
             style=ft.ButtonStyle(
-                shape=ft.RoundedRectangleBorder(radius=5)
+                shape=ft.RoundedRectangleBorder(radius=5),
+                alignment=ft.alignment.center
             ),
             on_click=on_click
         )
@@ -219,6 +270,54 @@ class FormOne(ft.Row):
                 self.field,
                 self.button
         ]
+
+class VerifyDialog(ft.AlertDialog):
+    def __init__(self, page: ft.Page, title: str | None = None, label: str | None = None, 
+                 on_close: Any | None = None, on_verify: Any | None = None):
+        super().__init__()
+        self.page = page
+        self.modal = True
+        self.close = on_close
+        self.verify = on_verify
+
+        self.title = ft.Text(
+            value=title
+        )
+
+        self.content = ft.TextField(
+            label=label
+        )
+
+        self.actions = [
+            ft.ElevatedButton(
+                text='Cancel', 
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=16)
+                ),
+                width=75,
+                on_click=self.on_close
+            ),
+            ft.ElevatedButton(
+                text='Verify', 
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=16)
+                ),
+                width=75,
+                on_click=self.on_verify
+            )
+        ]
+
+        self.page.open(self)
+
+    def on_close(self, event: ft.ControlEvent):
+        self.page.close(self)
+        if self.close:
+            self.close()
+
+    def on_verify(self, event: ft.ControlEvent):
+        self.page.close(self)
+        if self.verify:
+            self.verify()
 
 def insert_account(user_db, AppName, username, password):
     conn = sqlite3.connect(f"src/assets/database/{user_db}.db")

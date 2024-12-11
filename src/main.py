@@ -41,11 +41,12 @@ class LoginView(ft.View):
         self.background = ft.Container(
             ft.Image(
                 'src/assets/images/WELCOME4.png',
-                scale=1.05,
+                scale=0.99,
                 expand=True,
                 fit=ft.ImageFit.CONTAIN,
             ),
-            top=-15
+            top=-30,
+            left=-20
         )
 
         self.username = ft.TextField(
@@ -64,8 +65,8 @@ class LoginView(ft.View):
                 width=150,
                 on_click=self.on_login
             ),
-            top=345,
-            left=80
+            top=335,
+            left=75
         )
         self.sign_up_btn = ft.Container(
             content=ft.ElevatedButton(
@@ -76,8 +77,8 @@ class LoginView(ft.View):
                 width=150,
                 on_click=lambda e: self.page.go('/sign_up')
             ),
-            top=385,
-            left=80
+            top=380,
+            left=75
         )
 
         self.controls = [
@@ -86,13 +87,13 @@ class LoginView(ft.View):
                     self.background,
                     ft.Container(
                         self.username,
-                        top=188,
+                        top=174,
                         left=40
                     ),
                     ft.Container(
                         self.password,
                         width=245,
-                        top=282,
+                        top=262,
                         left=40
                     ),
 
@@ -121,11 +122,12 @@ class SignUpView(ft.View):
         self.background = ft.Container(
             ft.Image(
                 'src/assets/images/WELCOME4.png',
-                scale=1.05,
+                scale=0.99,
                 expand=True,
                 fit=ft.ImageFit.CONTAIN,
             ),
-            top=-15
+            top=-30,
+            left=-20
         )
 
         self.username = ft.TextField(
@@ -144,8 +146,8 @@ class SignUpView(ft.View):
                 width=150,
                 on_click=self.on_create
             ),
-            top=345,
-            left=80
+            top=335,
+            left=75
         )
         self.sign_up_btn = ft.Container(
             content=ft.ElevatedButton(
@@ -156,8 +158,8 @@ class SignUpView(ft.View):
                 width=150,
                 on_click=lambda e: self.page.go('/login')
             ),
-            top=385,
-            left=80
+            top=380,
+            left=75
         )
 
         self.controls = [
@@ -166,13 +168,13 @@ class SignUpView(ft.View):
                     self.background,
                     ft.Container(
                         self.username,
-                        top=188,
+                        top=174,
                         left=40
                     ),
                     ft.Container(
                         self.password,
                         width=245,
-                        top=282,
+                        top=262,
                         left=40
                     ),
 
@@ -242,9 +244,9 @@ class PasswordField(ft.Stack):
             password=True,
         )
         self.eye_button = ft.IconButton(
-            ft.Icons.REMOVE_RED_EYE,
+            ft.icons.REMOVE_RED_EYE,
             top=5,
-            left=195,
+            left=185,
             on_click=self.on_show
         )
 
@@ -256,9 +258,9 @@ class PasswordField(ft.Stack):
     def on_show(self, event: ft.ControlEvent):
         self.text_field.password = not bool(self.text_field.password)
         if self.text_field.password:
-            self.eye_button.icon = ft.Icons.REMOVE_RED_EYE
+            self.eye_button.icon = ft.icons.REMOVE_RED_EYE
         else:
-            self.eye_button.icon = ft.Icons.REMOVE_RED_EYE_OUTLINED
+            self.eye_button.icon = ft.icons.REMOVE_RED_EYE_OUTLINED
         self.update()
 
 class ErrorDialog(ft.AlertDialog):
